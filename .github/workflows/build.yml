@@ -1,0 +1,32 @@
+name: Build and publish GeoData
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['build.py', 'routing-source.json', '.github/workflows/build.yml']
+  schedule:
+    - cron: '37 4 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: geodata-publish
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build and validate databases
+        run: python3 build.py
+      - name: Verify checksums and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd dist && sha256sum -c geosite.dat.sha256sum geoip.dat.sha256sum)
+          tag="geodata-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "$tag" --notes "Generated from Loyalsoldier/v2ray-rules-dat and UnboVPN routing-source.json." --latest
+          echo "### Release: $tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "Routing header size: $(wc -c < dist/routing_header.txt) bytes" >> "$GITHUB_STEP_SUMMARY"
