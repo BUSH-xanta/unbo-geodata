@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['build.py', 'routing-source.json', '.github/workflows/build.yml']
+    paths: ['build.py', 'sync_remnawave.py', 'routing-source.json', '.github/workflows/build.yml']
   schedule:
     - cron: '37 4 * * *'
 permissions:
@@ -30,3 +30,8 @@ jobs:
           gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "$tag" --notes "Generated from Loyalsoldier/v2ray-rules-dat and UnboVPN routing-source.json." --latest
           echo "### Release: $tag" >> "$GITHUB_STEP_SUMMARY"
           echo "Routing header size: $(wc -c < dist/routing_header.txt) bytes" >> "$GITHUB_STEP_SUMMARY"
+      - name: Synchronize Remnawave routing header
+        env:
+          REMNAWAVE_URL: ${{ secrets.REMNAWAVE_URL }}
+          REMNAWAVE_API_TOKEN: ${{ secrets.REMNAWAVE_API_TOKEN }}
+        run: python3 sync_remnawave.py
